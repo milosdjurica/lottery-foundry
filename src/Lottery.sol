@@ -13,6 +13,9 @@ contract Lottery {
     uint private immutable i_ticketPrice;
     address payable[] private s_players; // payable because we have to pay the winner at the end
 
+    // Events
+    event EnteredLottery(address indexed player);
+
     constructor(uint ticketPrice) {
         i_ticketPrice = ticketPrice;
     }
@@ -23,6 +26,8 @@ contract Lottery {
         // require(msg.value >= i_ticketPrice, "Not enough ETH sent!");
         if (msg.value < i_ticketPrice) revert Lottery__NotEnoughETHSent();
         s_players.push(payable(msg.sender));
+
+        emit EnteredLottery(msg.sender);
     }
 
     function pickWinner() public {}
