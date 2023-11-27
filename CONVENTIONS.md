@@ -20,3 +20,10 @@
 - internal
 - private
 - view & pure functions
+
+# TODO
+
+- Add same for tests
+  - Unit, integration, etc...
+  - Test tree !!!
+  -
