@@ -12,13 +12,16 @@ import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2
  */
 contract Lottery is VRFConsumerBaseV2 {
     error Lottery__NotEnoughETHSent();
-    error Lottery__NotEnoughTimePassed();
+    error Lottery__UpkeepNotNeeded(
+        uint currentBalance,
+        uint numPlayers,
+        uint raffleState
+    );
     error Lottery__TransferFailed();
     error Lottery__CalculatingWinner();
 
     // * Type Declarations
     // using enum because we could have multiple states -> open, closed, calculating, etc...
-
     enum LotteryState {
         OPEN, // 0
         CALCULATING // 1
@@ -68,7 +71,6 @@ contract Lottery is VRFConsumerBaseV2 {
 
     function enterLottery() external payable {
         // ! Old way, but custom errors are more gas efficient
-        // ! If the condition is TRUE, then dont rever, if false revert with "Not enough ETH sent!"
         // require(msg.value >= i_ticketPrice, "Not enough ETH sent!");
         if (msg.value < i_ticketPrice) revert Lottery__NotEnoughETHSent();
         if (s_lotteryState != LotteryState.OPEN)
@@ -78,12 +80,37 @@ contract Lottery is VRFConsumerBaseV2 {
         emit EnteredLottery(msg.sender);
     }
 
-    function pickWinner() external {
-        if (block.timestamp - s_lastTimeStamp < i_interval)
-            revert Lottery__NotEnoughTimePassed();
+    // When the winner is going to be picked?
+    /**
+     * @dev This is the function that the Chainlink Automation nodes call
+     * to see if it is time to perform an upkeep.
+     * The following should be true for this to return true:
+     * 1. The time interval has passed between Lottery runs
+     * 2. The lottery is in the OPEN state
+     * 3. The contract has ETH(aka, players)
+     * 4. (Implicitl) The subscription is funded with LINK
+     */
+    function checkUpkeep(
+        bytes memory /*checkData*/
+    ) public view returns (bool upkeepNeeded, bytes memory /*performData*/) {
+        bool timeHasPassed = (block.timestamp - s_lastTimeStamp) >= i_interval;
+        bool isOpen = s_lotteryState == LotteryState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPlayers = s_players.length > 0;
+        upkeepNeeded = timeHasPassed && isOpen && hasBalance && hasPlayers;
+        return (upkeepNeeded, "0x0");
+    }
 
+    function performUpkeep(bytes calldata /*performData*/) external {
+        (bool upkeepNeeded, ) = checkUpkeep("");
+        if (!upkeepNeeded)
+            revert Lottery__UpkeepNotNeeded(
+                address(this).balance,
+                s_players.length,
+                uint(s_lotteryState)
+            );
         s_lotteryState = LotteryState.CALCULATING;
-        uint requestId = i_vrfCoordinator.requestRandomWords(
+        i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId, // id
             REQUEST_CONFIRMATIONS, // how many blocks should pass
@@ -95,7 +122,7 @@ contract Lottery is VRFConsumerBaseV2 {
     // * CEI: Checks, Effects, Interactions -> important design pattern
     // ! better to do checks at start because it is more gas efficient to revert on start
     function fulfillRandomWords(
-        uint requestId,
+        uint /*requestId*/,
         uint[] memory randomWords
     ) internal override {
         // Checks -> check for reverts
