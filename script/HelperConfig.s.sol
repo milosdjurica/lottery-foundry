@@ -3,6 +3,7 @@
 pragma solidity ^0.8.19;
 
 import {Script} from "../lib/forge-std/src/Script.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract HelperConfig is Script {
     struct NetworkConfig {
@@ -26,7 +27,7 @@ contract HelperConfig is Script {
         }
     }
 
-    function getSepoliaETHConfig() public view returns (NetworkConfig memory) {
+    function getSepoliaETHConfig() public pure returns (NetworkConfig memory) {
         return
             NetworkConfig({
                 ticketPrice: 0.01 ether,
@@ -38,15 +39,30 @@ contract HelperConfig is Script {
             });
     }
 
-    function getOrCreateAnvilETHConfig()
-        public
-        view
-        returns (NetworkConfig memory)
-    {
+    function getOrCreateAnvilETHConfig() public returns (NetworkConfig memory) {
         if (activeNetworkConfig.vrfCoordinator != address(0)) {
             return activeNetworkConfig;
         }
 
-        // return NetworkConfig({})
+        uint96 baseFee = 0.25 ether; // 0.25 LINK
+        uint96 gasPriceLink = 1e9; // 1 gwei LINK
+
+        vm.startBroadcast();
+        VRFCoordinatorV2Mock vrfCoordinatorMock = new VRFCoordinatorV2Mock(
+            baseFee,
+            gasPriceLink
+        );
+        vm.stopBroadcast();
+
+        return
+            NetworkConfig({
+                ticketPrice: 0.01 ether,
+                interval: 30,
+                vrfCoordinator: address(vrfCoordinatorMock),
+                // gasLane doesn't matter for developing on anvil, so i just left it same as for sepolia
+                gasLane: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
+                subscriptionId: 0, // script will add this
+                callbackGasLimit: 500000 // 500 000 gas
+            });
     }
 }
