@@ -7,7 +7,7 @@ import {Lottery} from "../src/Lottery.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract DeployLottery is Script {
-    function run() external returns (Lottery) {
+    function run() external returns (Lottery, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
         (
             uint ticketPrice,
@@ -28,6 +28,6 @@ contract DeployLottery is Script {
             callbackGasLimit
         );
         vm.stopBroadcast();
-        return lottery;
+        return (lottery, helperConfig);
     }
 }
