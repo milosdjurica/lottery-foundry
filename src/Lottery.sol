@@ -92,22 +92,30 @@ contract Lottery is VRFConsumerBaseV2 {
         );
     }
 
-    // CEI: Checks, Effects, Interactions -> important design pattern
+    // * CEI: Checks, Effects, Interactions -> important design pattern
+    // ! better to do checks at start because it is more gas efficient to revert on start
     function fulfillRandomWords(
         uint requestId,
         uint[] memory randomWords
     ) internal override {
+        // Checks -> check for reverts
+        // Effects -> effects on our OWN contract
         uint indexOfWinner = randomWords[0] % s_players.length;
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
+        // Interaction -> interacting with other contracts
+        // ! delete s_players is more gas efficient ????????????????????????????????????????????
+        s_players = new address payable[](0);
+        s_lastTimeStamp = block.timestamp;
+        emit PickedWinner(winner);
         (bool success, ) = winner.call{value: address(this).balance}("");
 
-        s_players = new address payable[](0);
+        // ! I leave this Effect after Interaction because if I OPEN state,
+        // ! then potentially user can add funds to the contract before the money is transfered
+        // ! it could lead
         s_lotteryState = LotteryState.OPEN;
-        s_lastTimeStamp = block.timestamp;
 
         if (!success) revert Lottery__TransferFailed();
-        emit PickedWinner(winner);
     }
 
     // * Getters
