@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 /**
  * @title A Simple Lottery Contract
@@ -9,8 +10,10 @@ import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interface
  * @notice This contract gives user a chance to join the lottery and win total prize
  * @dev Implements Chainlink VRFv2
  */
-contract Lottery {
+contract Lottery is VRFConsumerBaseV2 {
     error Lottery__NotEnoughETHSent();
+    error Lottery__NotEnoughTimePassed();
+    error Lottery__TransferFailed();
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
@@ -25,6 +28,7 @@ contract Lottery {
     uint32 private immutable i_callbackGasLimit;
 
     uint private s_lastTimeStamp;
+    address private s_recentWinner;
     address payable[] private s_players; // payable because we have to pay the winner at the end
 
     // Events
@@ -37,7 +41,7 @@ contract Lottery {
         bytes32 gasLane,
         uint64 subscriptionId,
         uint32 callbackGasLimit
-    ) {
+    ) VRFConsumerBaseV2(vrfCoordinator) {
         i_ticketPrice = ticketPrice;
         i_interval = interval;
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
@@ -61,10 +65,10 @@ contract Lottery {
     // Use rand num to pick a player
     // Be automatically called
     function pickWinner() external {
-        if (block.timestamp - s_lastTimeStamp < i_interval) {
-            revert();
-        }
+        if (block.timestamp - s_lastTimeStamp < i_interval)
+            revert Lottery__NotEnoughTimePassed();
 
+        // 1. Request RNG
         uint requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId, // id
@@ -72,8 +76,18 @@ contract Lottery {
             i_callbackGasLimit, // gass limit
             NUM_WORDS // number of random numbers we get back
         );
-        // 1. Request RNG
         // 2. Get random number
+    }
+
+    function fulfillRandomWords(
+        uint requestId,
+        uint[] memory randomWords
+    ) internal override {
+        uint indexOfWinner = randomWords[0] % s_players.length;
+        address payable winner = s_players[indexOfWinner];
+        s_recentWinner = winner;
+        (bool success, ) = winner.call{value: address(this).balance}("");
+        if (!success) revert Lottery__TransferFailed();
     }
 
     // ! Getters
