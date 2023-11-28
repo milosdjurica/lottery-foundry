@@ -11,7 +11,7 @@ contract HelperConfig is Script {
         uint interval;
         address vrfCoordinator;
         bytes32 gasLane;
-        uint subscriptionId;
+        uint64 subscriptionId;
         uint32 callbackGasLimit;
     }
 
@@ -20,7 +20,7 @@ contract HelperConfig is Script {
     constructor() {
         if (block.chainid == 11155111) {
             activeNetworkConfig = getSepoliaETHConfig();
-        } else if (block.chainit == 1) {
+        } else if (block.chainid == 1) {
             // mainnet
         } else {
             activeNetworkConfig = getOrCreateAnvilETHConfig();
