@@ -18,7 +18,7 @@ contract Lottery is VRFConsumerBaseV2 {
         uint raffleState
     );
     error Lottery__TransferFailed();
-    error Lottery__CalculatingWinner();
+    error Lottery__LotteryNotOpen();
 
     // * Type Declarations
     // using enum because we could have multiple states -> open, closed, calculating, etc...
@@ -74,7 +74,7 @@ contract Lottery is VRFConsumerBaseV2 {
         // require(msg.value >= i_ticketPrice, "Not enough ETH sent!");
         if (msg.value < i_ticketPrice) revert Lottery__NotEnoughETHSent();
         if (s_lotteryState != LotteryState.OPEN)
-            revert Lottery__CalculatingWinner();
+            revert Lottery__LotteryNotOpen();
 
         s_players.push(payable(msg.sender));
         emit EnteredLottery(msg.sender);
