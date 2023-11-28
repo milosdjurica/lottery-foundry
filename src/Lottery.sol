@@ -14,7 +14,17 @@ contract Lottery is VRFConsumerBaseV2 {
     error Lottery__NotEnoughETHSent();
     error Lottery__NotEnoughTimePassed();
     error Lottery__TransferFailed();
+    error Lottery__CalculatingWinner();
 
+    // * Type Declarations
+    // using enum because we could have multiple states -> open, closed, calculating, etc...
+
+    enum LotteryState {
+        OPEN, // 0
+        CALCULATING // 1
+    }
+
+    // * State Variables
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
 
@@ -31,8 +41,11 @@ contract Lottery is VRFConsumerBaseV2 {
     address private s_recentWinner;
     address payable[] private s_players; // payable because we have to pay the winner at the end
 
-    // Events
+    LotteryState private s_lotteryState;
+
+    // * Events
     event EnteredLottery(address indexed player);
+    event PickedWinner(address indexed winner);
 
     constructor(
         uint ticketPrice,
@@ -48,6 +61,8 @@ contract Lottery is VRFConsumerBaseV2 {
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
+        s_lotteryState = LotteryState.OPEN;
+
         s_lastTimeStamp = block.timestamp;
     }
 
@@ -56,19 +71,18 @@ contract Lottery is VRFConsumerBaseV2 {
         // ! If the condition is TRUE, then dont rever, if false revert with "Not enough ETH sent!"
         // require(msg.value >= i_ticketPrice, "Not enough ETH sent!");
         if (msg.value < i_ticketPrice) revert Lottery__NotEnoughETHSent();
-        s_players.push(payable(msg.sender));
+        if (s_lotteryState != LotteryState.OPEN)
+            revert Lottery__CalculatingWinner();
 
+        s_players.push(payable(msg.sender));
         emit EnteredLottery(msg.sender);
     }
 
-    // Get random number
-    // Use rand num to pick a player
-    // Be automatically called
     function pickWinner() external {
         if (block.timestamp - s_lastTimeStamp < i_interval)
             revert Lottery__NotEnoughTimePassed();
 
-        // 1. Request RNG
+        s_lotteryState = LotteryState.CALCULATING;
         uint requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId, // id
@@ -76,9 +90,9 @@ contract Lottery is VRFConsumerBaseV2 {
             i_callbackGasLimit, // gass limit
             NUM_WORDS // number of random numbers we get back
         );
-        // 2. Get random number
     }
 
+    // CEI: Checks, Effects, Interactions -> important design pattern
     function fulfillRandomWords(
         uint requestId,
         uint[] memory randomWords
@@ -87,10 +101,16 @@ contract Lottery is VRFConsumerBaseV2 {
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
         (bool success, ) = winner.call{value: address(this).balance}("");
+
+        s_players = new address payable[](0);
+        s_lotteryState = LotteryState.OPEN;
+        s_lastTimeStamp = block.timestamp;
+
         if (!success) revert Lottery__TransferFailed();
+        emit PickedWinner(winner);
     }
 
-    // ! Getters
+    // * Getters
     function getTicketPrice() external view returns (uint) {
         return i_ticketPrice;
     }
