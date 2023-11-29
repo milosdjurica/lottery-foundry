@@ -8,6 +8,10 @@ import {Lottery} from "../../src/Lottery.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 
 contract LotteryTest is Test {
+    // * Events
+    // cant import them from lottery, so have to recreate same here
+    event EnteredLottery(address indexed player);
+
     Lottery lottery;
     HelperConfig helperConfig;
 
@@ -48,11 +52,25 @@ contract LotteryTest is Test {
         lottery.enterLottery();
     }
 
+    // test for not open state
+
     function testLotteryRecordsPlayerWhenTheyEnter() public {
         vm.prank(PLAYER);
         lottery.enterLottery{value: ticketPrice}();
         address playerRecorded = lottery.getPLayer(0);
 
         assert(playerRecorded == PLAYER);
+    }
+
+    function testEmitsEventOnEntrance() public {
+        vm.prank(PLAYER);
+        // can have only 3 indexed, first is true, other 2 arent,
+        // last false is to say that there arent any unindexed parameters
+        vm.expectEmit(true, false, false, false, address(lottery));
+
+        // expectEmit() says, i expect next line to emit same event like the line after
+        // emit EnteredLottery(PLAYER) should be emited in next function call lottery.enterLottery()
+        emit EnteredLottery(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
     }
 }
