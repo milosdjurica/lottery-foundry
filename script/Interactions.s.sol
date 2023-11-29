@@ -15,17 +15,18 @@ contract CreateSubscription is Script {
 
     function createSubscriptionUsingConfig() public returns (uint64) {
         HelperConfig helperConfig = new HelperConfig();
-        (, , address vrfCoordinator, , , , , ) = helperConfig
+        (, , address vrfCoordinator, , , , , uint deployerKey) = helperConfig
             .activeNetworkConfig();
-        return createSubscription(vrfCoordinator);
+        return createSubscription(vrfCoordinator, deployerKey);
     }
 
     function createSubscription(
-        address vrfCoordinator
+        address vrfCoordinator,
+        uint deployerKey
     ) public returns (uint64) {
         console.log("Creating subscrpition on ChainId ", block.chainid);
 
-        vm.startBroadcast();
+        vm.startBroadcast(deployerKey);
 
         uint64 subscriptionId = VRFCoordinatorV2Mock(vrfCoordinator)
             .createSubscription();
@@ -53,22 +54,23 @@ contract FundSubscription is Script {
             uint64 subId,
             ,
             address link,
-
+            uint deployerKey
         ) = helperConfig.activeNetworkConfig();
-        fundSubscription(vrfCoordinator, subId, link);
+        fundSubscription(vrfCoordinator, subId, link, deployerKey);
     }
 
     function fundSubscription(
         address vrfCoordinator,
         uint64 subId,
-        address link
+        address link,
+        uint deployerKey
     ) public {
         console.log("Funding subscription ", subId);
         console.log("Using vrfCoordinator ", vrfCoordinator);
         console.log("On chainId", block.chainid);
 
         if (block.chainid == 31337) {
-            vm.startBroadcast();
+            vm.startBroadcast(deployerKey);
 
             VRFCoordinatorV2Mock(vrfCoordinator).fundSubscription(
                 subId,
@@ -76,7 +78,7 @@ contract FundSubscription is Script {
             );
             vm.stopBroadcast();
         } else {
-            vm.startBroadcast();
+            vm.startBroadcast(deployerKey);
             LinkToken(link).transferAndCall(
                 vrfCoordinator,
                 FUND_AMOUNT,

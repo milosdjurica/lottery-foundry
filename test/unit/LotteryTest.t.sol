@@ -221,10 +221,10 @@ contract LotteryTest is Test {
             address(lottery)
         );
 
-        // assert(uint(lottery.getLotteryState()) == 0);
-        // assert(lottery.getRecentWinner() != address(0));
-        // assert(lottery.getPlayersLength() == 0);
-        // assert(previousTimestamp < lottery.getLastTimeStamp());
+        assert(uint(lottery.getLotteryState()) == 0);
+        assert(lottery.getRecentWinner() != address(0));
+        assert(lottery.getPlayersLength() == 0);
+        assert(previousTimestamp < lottery.getLastTimeStamp());
         assert(
             lottery.getRecentWinner().balance ==
                 STARTING_USER_BALANCE + prize - ticketPrice
