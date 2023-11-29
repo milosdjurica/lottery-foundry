@@ -32,9 +32,27 @@ contract LotteryTest is Test {
             subscriptionId,
             callbackGasLimit
         ) = helperConfig.activeNetworkConfig();
+        vm.deal(PLAYER, STARTING_USER_BALANCE);
     }
 
     function testLotteryInitializesInOpenState() public view {
         assert(lottery.getLotteryState() == Lottery.LotteryState.OPEN);
+    }
+
+    function testLotteryRevertsWhenYouDontPayEnough() public {
+        // Arrange
+        vm.prank(PLAYER);
+        // Act
+        // Assert
+        vm.expectRevert(Lottery.Lottery__NotEnoughETHSent.selector);
+        lottery.enterLottery();
+    }
+
+    function testLotteryRecordsPlayerWhenTheyEnter() public {
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+        address playerRecorded = lottery.getPLayer(0);
+
+        assert(playerRecorded == PLAYER);
     }
 }
