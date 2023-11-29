@@ -17,7 +17,8 @@ contract DeployLottery is Script {
             bytes32 gasLane,
             uint64 subscriptionId,
             uint32 callbackGasLimit,
-            address link
+            address link,
+            uint deployerKey
         ) = helperConfig.activeNetworkConfig();
 
         // create a subscription
@@ -47,7 +48,8 @@ contract DeployLottery is Script {
         addConsumer.addConsumer(
             address(lottery),
             vrfCoordinator,
-            subscriptionId
+            subscriptionId,
+            deployerKey
         );
         return (lottery, helperConfig);
     }
