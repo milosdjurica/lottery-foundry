@@ -93,6 +93,9 @@ contract LotteryTest is Test {
         lottery.enterLottery{value: ticketPrice}();
     }
 
+    ////////////////////
+    // !checkUpkeep() //
+    ////////////////////
     function checkUpkeepFalseIfItHasNoBalance() public {
         // Arrange
         vm.warp(block.timestamp + interval + 1);
@@ -117,5 +120,31 @@ contract LotteryTest is Test {
         (bool upkeepNeeded, ) = lottery.checkUpkeep("");
         // Assert
         assert(upkeepNeeded == false);
+    }
+
+    //////////////////////
+    // !performUpkeep() //
+    //////////////////////
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public {
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        lottery.performUpkeep("");
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
+        uint balance = 0;
+        uint numPlayers = 0;
+        uint lotteryState = 0;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Lottery.Lottery__UpkeepNotNeeded.selector,
+                balance,
+                numPlayers,
+                lotteryState
+            )
+        );
+        lottery.performUpkeep("");
     }
 }
