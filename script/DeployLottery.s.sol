@@ -18,6 +18,10 @@ contract DeployLottery is Script {
             uint32 callbackGasLimit
         ) = helperConfig.activeNetworkConfig();
 
+        if (subscriptionId == 0) {
+            // craete subscriptionId
+        }
+
         vm.startBroadcast();
         Lottery lottery = new Lottery(
             ticketPrice,
