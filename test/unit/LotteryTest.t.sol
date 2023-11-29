@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {Test, console} from "../../lib/forge-std/src/Test.sol";
+import {Vm} from "../../lib/forge-std/src/Vm.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 import {DeployLottery} from "../../script/DeployLottery.s.sol";
 import {Lottery} from "../../src/Lottery.sol";
@@ -25,6 +27,14 @@ contract LotteryTest is Test {
 
     address public PLAYER = makeAddr("player");
     uint public constant STARTING_USER_BALANCE = 100 ether;
+
+    modifier lotteryEnteredAndTimePassed() {
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
 
     function setUp() external {
         DeployLottery deployLottery = new DeployLottery();
@@ -146,5 +156,30 @@ contract LotteryTest is Test {
             )
         );
         lottery.performUpkeep("");
+    }
+
+    function testPerformUpkeepUpdatesLotteryStateAndEmitsRequestId()
+        public
+        lotteryEnteredAndTimePassed
+    {
+        vm.recordLogs();
+        lottery.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        Lottery.LotteryState lotteryState = lottery.getLotteryState();
+
+        assert(uint(requestId) > 0);
+        assert(uint(lotteryState) == 1);
+    }
+
+    function testFullfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(
+        uint randomRequestId
+    ) public lotteryEnteredAndTimePassed {
+        vm.expectRevert("nonexistent request");
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(lottery)
+        );
     }
 }

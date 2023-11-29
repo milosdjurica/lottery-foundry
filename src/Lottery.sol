@@ -49,6 +49,7 @@ contract Lottery is VRFConsumerBaseV2 {
     // * Events
     event EnteredLottery(address indexed player);
     event PickedWinner(address indexed winner);
+    event RequestedLotteryWinner(uint indexed requestId);
 
     constructor(
         uint ticketPrice,
@@ -110,13 +111,14 @@ contract Lottery is VRFConsumerBaseV2 {
                 uint(s_lotteryState)
             );
         s_lotteryState = LotteryState.CALCULATING;
-        i_vrfCoordinator.requestRandomWords(
+        uint requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId, // id
             REQUEST_CONFIRMATIONS, // how many blocks should pass
             i_callbackGasLimit, // gass limit
             NUM_WORDS // number of random numbers we get back
         );
+        emit RequestedLotteryWinner(requestId);
     }
 
     // * CEI: Checks, Effects, Interactions -> important design pattern
