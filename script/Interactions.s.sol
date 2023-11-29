@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Script, console} from "../lib/forge-std/src/Script.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {DevOpsTools} from "../lib/foundry-devops/src/DevOpsTools.sol";
 import {LinkToken} from "../test/mocks/LinkToken.sol";
 
 import {HelperConfig} from "./HelperConfig.s.sol";
@@ -83,5 +84,39 @@ contract FundSubscription is Script {
 
             vm.stopBroadcast();
         }
+    }
+}
+
+contract AddConsumer is Script {
+    function run() external {
+        address lottery = DevOpsTools.get_most_recent_deployment(
+            "Lottery",
+            block.chainid
+        );
+
+        addConsumerUsingConfig(lottery);
+    }
+
+    function addConsumerUsingConfig(address lottery) public {
+        HelperConfig helperConfig = new HelperConfig();
+
+        (, , address vrfCoordinator, , uint64 subId, , ) = helperConfig
+            .activeNetworkConfig();
+
+        addConsumer(address(lottery), vrfCoordinator, subId);
+    }
+
+    function addConsumer(
+        address lottery,
+        address vrfCoordinator,
+        uint64 subId
+    ) public {
+        console.log("Adding consumer contract: ", lottery);
+        console.log("Using vrfCoordinator: ", vrfCoordinator);
+        console.log("On chainId: ", block.chainid);
+
+        vm.startBroadcast();
+        VRFCoordinatorV2Mock(vrfCoordinator).addConsumer(subId, lottery);
+        vm.stopBroadcast();
     }
 }
