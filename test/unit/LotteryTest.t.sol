@@ -53,6 +53,20 @@ contract LotteryTest is Test {
     }
 
     // test for not open state
+    function testCantEnterWhenLotteryIsNotOpen() public {
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+
+        // ! making sure that enough time is passed for lottery to pick winner and sets state to CALCULATING
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        lottery.performUpkeep("");
+
+        vm.expectRevert(Lottery.Lottery__LotteryNotOpen.selector);
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+    }
 
     function testLotteryRecordsPlayerWhenTheyEnter() public {
         vm.prank(PLAYER);
