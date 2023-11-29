@@ -45,6 +45,9 @@ contract LotteryTest is Test {
         assert(lottery.getLotteryState() == Lottery.LotteryState.OPEN);
     }
 
+    /////////////////////
+    // !enterLottery() //
+    /////////////////////
     function testLotteryRevertsWhenYouDontPayEnough() public {
         // Arrange
         vm.prank(PLAYER);
@@ -88,5 +91,31 @@ contract LotteryTest is Test {
         // emit EnteredLottery(PLAYER) should be emited in next function call lottery.enterLottery()
         emit EnteredLottery(PLAYER);
         lottery.enterLottery{value: ticketPrice}();
+    }
+
+    function checkUpkeepFalseIfItHasNoBalance() public {
+        // Arrange
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        // Act
+        (bool upkeepNeeded, ) = lottery.checkUpkeep("");
+
+        // Assert
+        assert(!upkeepNeeded);
+    }
+
+    function checkUpkeepReturnsFalseIfLotteryNotOpen() public {
+        // Arrange
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ticketPrice}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        lottery.performUpkeep("");
+
+        // Act
+        (bool upkeepNeeded, ) = lottery.checkUpkeep("");
+        // Assert
+        assert(upkeepNeeded == false);
     }
 }
