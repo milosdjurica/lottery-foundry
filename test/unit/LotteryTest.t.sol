@@ -21,6 +21,7 @@ contract LotteryTest is Test {
     bytes32 gasLane;
     uint64 subscriptionId;
     uint32 callbackGasLimit;
+    address link;
 
     address public PLAYER = makeAddr("player");
     uint public constant STARTING_USER_BALANCE = 100 ether;
@@ -34,7 +35,8 @@ contract LotteryTest is Test {
             vrfCoordinator,
             gasLane,
             subscriptionId,
-            callbackGasLimit
+            callbackGasLimit,
+            link
         ) = helperConfig.activeNetworkConfig();
         vm.deal(PLAYER, STARTING_USER_BALANCE);
     }
